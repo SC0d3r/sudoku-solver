@@ -25,15 +25,6 @@ function cellDim({ width, rows }) {
   return divAndOffset(width);
 }
 
-function onClickCell(x, y, { rows, width }) {
-  const cellWidth = cellDim({ rows, width })
-
-  const whichColumn = Math.floor(x / cellWidth);
-  const whichRow = Math.floor(y / cellWidth);
-
-  return [whichRow, whichColumn];
-}
-
 
 function setCell(value, row, col, table) {
   const valueLens = R.lensPath(['values', row, col]);
@@ -69,25 +60,30 @@ function homes({ values }) {
   const thirdCol = R.splitEvery(3, R.pluck(2, splitted))
   return [...firstCol, ...secondCol, ...thirdCol]
 }
+function calculateHomeIndex(row, col) {
+  const within = R.useWith(R.both, [
+    R.flip(R.gte), R.flip(R.lte)]);
+    
+  const fromRow = R.cond([
+    [within(0, 2), R.always([0, 3, 6])],
+    [within(3, 5), R.always([1, 4, 7])],
+    [within(6, 8), R.always([2, 5, 8])]
+  ])(row);
+  const fromCol = R.cond([
+    [within(0, 2), R.always(0)],
+    [within(3, 5), R.always(1)],
+    [within(6, 8), R.always(2)]
+  ])(col);
+  // console.log(fromRow , fromCol)
+  // console.log(fromRow[fromCol])
+  // process.exit();
+  return fromRow[fromCol];
+}
 
 // home is 3x3 cells
 function home(row, col, table) {
-  const isFirstCol = R.lte(R.__, 2);
-  const isSecondCol = R.lte(R.__, 5);
-  const rowCol = R.cond([
-    [isFirstCol, R.always(R.head)],
-    [isSecondCol, R.always(R.nth(1))],
-    [R.T, R.always(R.last)]
-  ]);
-  const specifiedRow = rowCol(row);
-  const applyToHomes = f => R.compose(f, homes, R.nthArg(1))
-  return R.cond([
-    [isFirstCol, applyToHomes(specifiedRow)],
-    [isSecondCol, applyToHomes(R.compose(specifiedRow, R.drop(3)))],
-    [R.T, applyToHomes(R.compose(specifiedRow, R.drop(6)))]
-  ])(col, table)
+  return homes(table)[calculateHomeIndex(row, col)];
 }
-
 
 
 
