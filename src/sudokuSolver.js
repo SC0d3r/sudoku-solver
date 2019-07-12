@@ -8,6 +8,36 @@ function conflictsInRow(row, col, table) {
   )(table)
 }
 
+function zeroConfVals(row, col, table) {
+  const isZero = R.equals(0);
+  return R.compose(
+    R.map(R.head),
+    R.filter(R.compose(isZero, R.last)),
+    valsWithLeastConflict
+  )(row, col, table);
+}
+
+function randomizeMostConfVals(howMany, emptyCells, table) {
+  const emptyCellsZippedWithConfVals = R.sort(R.descend(R.last),
+    R.converge(R.zip, [R.identity,
+    R.map(
+      rowColVal => conflicts(rowColVal[0], rowColVal[1], table))
+    ])(emptyCells));
+
+  const randomized = R.compose(
+    randomizeEmptyCells,
+    R.map(R.head),
+    R.take(howMany)
+  )(emptyCellsZippedWithConfVals);
+
+  const replaced = R.compose(
+    R.concat(randomized),
+    R.drop(howMany),
+    R.map(R.head)
+  )(emptyCellsZippedWithConfVals);
+
+  return replaced;
+}
 
 function conflictsInCol(row, col, table) {
   const value = R.path(['values', row, col], table);
@@ -20,8 +50,9 @@ function conflictsInCol(row, col, table) {
 }
 
 function homeWithoutOwnRowCol(row, col, table) {
-  const removeOwnRow = R.remove(row, 1);
-  const removeOwnCol = R.map(R.remove(col, 1));
+  const removeOwnRow = R.remove(row % 3, 1);
+
+  const removeOwnCol = R.map(R.remove(col % 3, 1));
   return R.compose(
     removeOwnCol,
     removeOwnRow,
@@ -83,8 +114,12 @@ function randomizeEmptyCells(emptyCells) {
 
 function emptyCellSetter(row, col, val) {
   const atRowCol = R.lensPath([row, col])
-  return R.set(atRowCol, val)
+  if (R.is(Array, val))
+    return R.set(atRowCol, R.ifElse(R.compose(R.isNil, R.head), R.always(0), R.head)(val))
+  else
+    return R.set(atRowCol, val)
 }
+
 function updateEmptyCellsValues(emptyCells, table) {
   const fs = R.map(R.apply(emptyCellSetter))(emptyCells)
 
@@ -98,6 +133,7 @@ function conflictForEveryChoice(row, col, table) {
   const allTables = R.map(setValueInTable)(allValues)
   return R.map(R.partial(conflicts, [row, col]), allTables);
 }
+
 function valsWithLeastConflict(row, col, table) {
   const lteOwnConflicts = R.lte(R.__, conflicts(row, col, table));
   return R.compose(
@@ -107,12 +143,14 @@ function valsWithLeastConflict(row, col, table) {
     conflictForEveryChoice
   )(row, col, table)
 }
+
 function leastConfVal(row, col, table) {
   const value = R.path(['values', row, col], table);
   return R.compose(
     R.ifElse(R.isEmpty, R.always(value), R.compose(R.head, R.head)),
     valsWithLeastConflict)(row, col, table);
 }
+
 
 function improveValue(row, col, values) {
   const betterValue = leastConfVal(row, col, { values })
@@ -134,7 +172,66 @@ function isSolved(emptyCells, table) {
 function algorithm(table, randomizedEmptyCells) {
   // we should use reduce and apply each randomizedEmptyCells 
   // to get a better less conf table
-    const betterValues = R.reduce((accum, rowColVal) =>
-      improveValue(rowColVal[0], rowColVal[1], accum), table.values, randomizedEmptyCells);
+  const betterValues = R.reduce((accum, rowColVal) =>
+    improveValue(rowColVal[0], rowColVal[1], accum), table.values, randomizedEmptyCells);
   return setValues(betterValues, table);
-} 
+}
+
+function changeAllPrevOneItemArraysToZero(emptyCells) {
+  const index = R.findLastIndex(R.compose(R.gt(R.__, 1), R.length, R.last), emptyCells);
+
+  if (index === -1) {
+    console.log('no match')
+    return emptyCells
+  }
+  const range = R.range(index + 1, emptyCells.length)
+  range.forEach(x => emptyCells[x][2] = 0);
+  emptyCells[index][2] = R.tail(emptyCells[index][2])
+  return emptyCells;
+}
+function emptyCellsDoesnotContainsZero(emptyCells) {
+  return R.none(R.compose(R.equals(0), R.last))(emptyCells)
+}
+function solveBruteForce(table, emptyCells, count = 0) {
+  console.log(emptyCells)
+  count++;
+
+  if (allConflicts(emptyCells, table) === 0 &&
+    emptyCellsDoesnotContainsZero(emptyCells)) {
+    return table;
+  }
+  let processed = false;
+  // let result;
+  emptyCells.forEach(([row, col, val], i) => {
+    if (processed) return;
+    if (val === 0) {
+      processed = true;
+      const vals = zeroConfVals(row, col, table);
+      // if(row === 7 && col === 2) {
+      //   console.log(table.values)
+      // }
+      if (R.isEmpty(vals)) {
+        if (i === 0) return console.error('WRONG TABLE');
+        if (emptyCells[i - 1][2].length === 1) changeAllPrevOneItemArraysToZero(emptyCells);
+        else {
+          emptyCells[i - 1][2] = R.tail(emptyCells[i - 1][2])
+        }
+      } else {
+        emptyCells[i] = [row, col, vals];
+      }
+      table = updateEmptyCellsValues(emptyCells, table);
+      // return solveBruteForce(table, emptyCells, count);
+      // process.nextTick(() => {result = solveBruteForce(table, emptyCells,table, count)})
+      // return result;
+    }
+  });
+  // console.log('wassaup')
+  // console.log(table)
+  // if (allConflicts(emptyCells, table) === 0) {
+  //   console.log('also here')
+  //   return emptyCells;
+  // }
+  return solveBruteForce(table, emptyCells, count);
+  // table = updateEmptyCellsValues(emptyCells, table);
+  // return table
+}
