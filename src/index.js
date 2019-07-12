@@ -2,7 +2,7 @@ const WIDTH = HEIGHT = 600;
 const GLOBAL = { table: {} }
 var loadedValues;
 function preload() {
-  loadJSON('./table.easy.json', data => {
+  loadJSON('./table.hard2.json', data => {
     loadedValues = data.table;
   });
 }
@@ -13,34 +13,14 @@ function setup_world() {
   if (loadedValues) {
     sudokuTable = setValues(loadedValues, sudokuTable);
     const emptCells = R.compose(
-      randomizeEmptyCells,
       emptyCells
     )(sudokuTable);
 
-    // sudokuTable = updateEmptyCellsValues(emptCells, sudokuTable);
     GLOBAL.table = sudokuTable;
-    loop_({
-      table: sudokuTable,
-      emptyCells: emptCells
-    });
+    solveBruteForce(sudokuTable, emptCells);
   } else
     console.error('initialize table')
 
-}
-
-function update({ table, emptyCells }) {
-  if (isSolved(emptyCells, table)) return { table, emptyCells };
-  const newTable = algorithm(table, emptyCells);
-  // console.log(newTable.values)
-  // console.log(table.values)
-  if (R.equals(newTable.values, table.values)) {
-    console.log('::CHANGING RANDOM VALUES::')
-    const newRandomizedEmptyCells = randomizeEmptyCells(emptyCells)
-    const newT = updateEmptyCellsValues(newRandomizedEmptyCells, table);
-    return update({ table: newT, emptyCells: newRandomizedEmptyCells })
-  }
-  const newEmptyCells = emptyCellFromTable(emptyCells, newTable);
-  return { table: newTable, emptyCells: newEmptyCells }
 }
 
 function setup() {
@@ -48,34 +28,10 @@ function setup() {
   setup_world();
 }
 
-// function draw() {
-//   console.log('here')
-//   background(255);
-//   noLoop();
-// }
-
-function loop_({ table, emptyCells }) {
-  loop();
+function draw() {
   background(255);
-  // console.log(table.values);
-  // console.log('Before improvement conflicts are = ' + allConflicts(emptyCells, table))
-  // console.log(emptyCells)
-  const { table: newT, emptyCells: newEmptyCells } = update({ table, emptyCells });
-  // console.log('new values')
-  // console.log(newT.values);
-  // console.log('After improvement conflicts are = ' + allConflicts(newEmptyCells, newT))
-  // console.log(newEmptyCells)
-  drawTable(table);
-  noLoop();
-
-  if (isSolved(emptyCells, table)) {
-    console.log("::SOLVED::")
-  } else
-    setTimeout(() => loop_({ table: newT, emptyCells: newEmptyCells }), 1);
+  drawTable(GLOBAL.table);
 }
-
-// function draw() {
-// }
 
 
 function mouseClicked() {

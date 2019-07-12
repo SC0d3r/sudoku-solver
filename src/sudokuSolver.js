@@ -193,7 +193,6 @@ function emptyCellsDoesnotContainsZero(emptyCells) {
   return R.none(R.compose(R.equals(0), R.last))(emptyCells)
 }
 function solveBruteForce(table, emptyCells, count = 0) {
-  console.log(emptyCells)
   count++;
 
   if (allConflicts(emptyCells, table) === 0 &&
@@ -220,6 +219,7 @@ function solveBruteForce(table, emptyCells, count = 0) {
         emptyCells[i] = [row, col, vals];
       }
       table = updateEmptyCellsValues(emptyCells, table);
+      GLOBAL.table = table;
       // return solveBruteForce(table, emptyCells, count);
       // process.nextTick(() => {result = solveBruteForce(table, emptyCells,table, count)})
       // return result;
@@ -231,7 +231,8 @@ function solveBruteForce(table, emptyCells, count = 0) {
   //   console.log('also here')
   //   return emptyCells;
   // }
-  return solveBruteForce(table, emptyCells, count);
+
+  setTimeout(() => solveBruteForce(table, emptyCells, count),20);
   // table = updateEmptyCellsValues(emptyCells, table);
   // return table
 }
