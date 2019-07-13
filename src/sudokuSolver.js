@@ -179,9 +179,14 @@ function guess(table, emptyCells) {
   return [updatedTable, updatedEmptyCells];
 }
 
-function solveBruteForce(table, emptyCells) {
+function isSolved(table, emptyCells) {
+  // console.log(table, emptyCells)
   const hasNoConflicts = allConflicts(emptyCells, table) === 0;
-  if (hasNoConflicts && emptyCellsHaveValue(emptyCells)) {
+  return hasNoConflicts && emptyCellsHaveValue(emptyCells);
+}
+
+function solveBruteForce(table, emptyCells) {
+  if (isSolved(table, emptyCells)) {
     return [table, emptyCells];
   }
   const [newT, newEmptyCells] = guess(table, emptyCells);

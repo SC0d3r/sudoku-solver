@@ -2,7 +2,7 @@ const WIDTH = HEIGHT = 600;
 const GLOBAL = { table: {} }
 var loadedValues;
 function preload() {
-  loadJSON('./table.hard.json', data => {
+  loadJSON('./table.easy.json', data => {
     loadedValues = data.table;
   });
 }
@@ -31,9 +31,7 @@ function setup() {
 function draw() {
   background(255);
   let { table, emptyCells } = GLOBAL;
-  const hasNoConflicts = allConflicts(emptyCells, table) === 0;
-  if (hasNoConflicts && emptyCellsHaveValue(emptyCells)) {
-  } else
+  if (!isSolved(table, emptyCells))
     [table, emptyCells] = guess(GLOBAL.table, GLOBAL.emptyCells)
   GLOBAL.table = table;
   GLOBAL.emptyCells = emptyCells;
