@@ -74,9 +74,6 @@ function calculateHomeIndex(row, col) {
     [within(3, 5), R.always(1)],
     [within(6, 8), R.always(2)]
   ])(col);
-  // console.log(fromRow , fromCol)
-  // console.log(fromRow[fromCol])
-  // process.exit();
   return fromRow[fromCol];
 }
 
@@ -97,10 +94,8 @@ function drawTable({ rows, width, values }) {
   const cellWidth = cellDim({ rows, width })
   const tableWidth = rows * cellWidth;
 
-  // line(10 , 10 , tableWidth , 10);
   stroke(0);
   strokeWeight(2);
-  // strokeWidth(5);
   rect(10, 10, tableWidth, tableWidth);
 
   //drawing rows
