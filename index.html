@@ -11,25 +11,48 @@
 
   <script src="./src/sudokuTable.js"></script>
   <script src="./src/sudokuSolver.js"></script>
-  <script src='./src/index.js'></script>
   <style>
-    /* html {
-      overflow: hidden;
-
-    } */
-
     canvas {
       position: absolute;
       left: 0;
-      top: 0;
-      bottom: 0;
+      top: 2em;
       right: 0;
       margin: auto;
+    }
+
+    #solve-btn {
+      width: 6em;
+      height: 50px;
+      font-size: 1.3rem;
+      background-color: #dfe4ea;
+      color: #2f3542;
+      border: none;
+    }
+
+    #reset-btn {
+      width: 6em;
+      height: 50px;
+      font-size: 1.3rem;
+      background-color: #dfe4ea;
+      color: #2f3542;
+      border: none;
+    }
+
+    footer {
+      text-align: center;
+      position: absolute;
+      bottom: 2.7rem;
+      width: 97vw;
     }
   </style>
 </head>
 
 <body>
+  <footer>
+    <button id="solve-btn">Solve</button>
+    <button id="reset-btn">Reset</button>
+  </footer>
+  <script src='./src/index.js'></script>
 </body>
 
 </html>
