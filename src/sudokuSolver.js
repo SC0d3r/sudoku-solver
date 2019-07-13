@@ -17,28 +17,6 @@ function zeroConfVals(row, col, table) {
   )(row, col, table);
 }
 
-function randomizeMostConfVals(howMany, emptyCells, table) {
-  const emptyCellsZippedWithConfVals = R.sort(R.descend(R.last),
-    R.converge(R.zip, [R.identity,
-    R.map(
-      rowColVal => conflicts(rowColVal[0], rowColVal[1], table))
-    ])(emptyCells));
-
-  const randomized = R.compose(
-    randomizeEmptyCells,
-    R.map(R.head),
-    R.take(howMany)
-  )(emptyCellsZippedWithConfVals);
-
-  const replaced = R.compose(
-    R.concat(randomized),
-    R.drop(howMany),
-    R.map(R.head)
-  )(emptyCellsZippedWithConfVals);
-
-  return replaced;
-}
-
 function conflictsInCol(row, col, table) {
   const value = R.path(['values', row, col], table);
   return R.compose(
@@ -90,26 +68,18 @@ function allConflicts(emptyCells, table) {
   )(emptyCells)
 }
 
-function randInt(from, to) {
-  return from + Math.floor(Math.random() * (to - from))
-}
 
 // returns [[row , col , value]]
-//TODO : make this Functional
 function emptyCells({ values }) {
-  const res = [];
-  for (let i = 0; i < values.length; i++) {
-    for (let j = 0; j < values.length; j++) {
-      if (values[i][j] === 0) res.push([i, j, 0]);
-    }
-  }
-  return res;
-}
+  const isValZero = R.compose(R.equals(0), R.last);
+  const chainIndexed = R.addIndex(R.chain);
+  const mapIndexed = R.addIndex(R.map);
+  const mapToRowColVal = (arr, i) => mapIndexed((y, j) => [i, j, y], arr);
+  return R.compose(
+    R.filter(isValZero),
+    chainIndexed(mapToRowColVal)
+  )(values)
 
-function randomizeEmptyCells(emptyCells) {
-  const rand1to9 = R.partial(randInt, [1, 10]);
-  const setRandomValue = (arr) => R.update(2, rand1to9())(arr);
-  return R.map(setRandomValue)(emptyCells);
 }
 
 function emptyCellSetter(row, col, val) {
@@ -144,95 +114,76 @@ function valsWithLeastConflict(row, col, table) {
   )(row, col, table)
 }
 
-function leastConfVal(row, col, table) {
-  const value = R.path(['values', row, col], table);
+function mergeEmptyCells(cells, dest) {
+  const rowCol = R.init;
+  const sortByRowCol = R.sortWith([
+    R.ascend(R.head),
+    R.ascend(R.nth(1))
+  ]);
   return R.compose(
-    R.ifElse(R.isEmpty, R.always(value), R.compose(R.head, R.head)),
-    valsWithLeastConflict)(row, col, table);
+    sortByRowCol,
+    R.concat(cells),
+    R.differenceWith(R.useWith(R.equals, [rowCol, rowCol]))
+  )(dest, cells);
 }
-
-
-function improveValue(row, col, values) {
-  const betterValue = leastConfVal(row, col, { values })
-  return setCell(betterValue, row, col, { values }).values;
-}
-
-function emptyCellFromTable(emptyCells, table) {
-  const valFromTable = (row, col) => value(row, col, table);
-  const rowColPair = R.apply(R.pair);
-  return R.map(R.converge((f, v) => f(v), [
-    rowColVal => R.update(2, R.__, rowColVal),
-    R.compose(R.apply(valFromTable), rowColPair)
-  ]))(emptyCells);
-}
-
-function isSolved(emptyCells, table) {
-  return R.equals(0, allConflicts(emptyCells, table));
-}
-function algorithm(table, randomizedEmptyCells) {
-  // we should use reduce and apply each randomizedEmptyCells 
-  // to get a better less conf table
-  const betterValues = R.reduce((accum, rowColVal) =>
-    improveValue(rowColVal[0], rowColVal[1], accum), table.values, randomizedEmptyCells);
-  return setValues(betterValues, table);
-}
-
 function changeAllPrevOneItemArraysToZero(emptyCells) {
-  const index = R.findLastIndex(R.compose(R.gt(R.__, 1), R.length, R.last), emptyCells);
+  const index = R.findLastIndex(R.compose(R.gt(R.__, 1), R.length, R.last));
+  const range = index => R.range(index + 1, emptyCells.length)
+  const lens = i => R.lensPath([i, 2])
+  const shiftValues = R.adjust(2, R.tail);
+  const zeroValueEmptyCells = index => R.reduce((accum, i) => R.set(lens(i), 0, accum), emptyCells, range(index));
+  const updateThisEmptyCell = index => R.compose(R.of, shiftValues, R.applyTo(emptyCells), R.nth)(index);
 
-  if (index === -1) {
-    console.log('no match')
-    return emptyCells
-  }
-  const range = R.range(index + 1, emptyCells.length)
-  range.forEach(x => emptyCells[x][2] = 0);
-  emptyCells[index][2] = R.tail(emptyCells[index][2])
-  return emptyCells;
+  const found = R.gte(R.__, 0);
+
+  return R.compose(
+    R.when(found, R.converge(mergeEmptyCells,
+      [updateThisEmptyCell, zeroValueEmptyCells])),
+    index,
+  )(emptyCells);
 }
-function emptyCellsDoesnotContainsZero(emptyCells) {
+
+function emptyCellsHaveValue(emptyCells) {
   return R.none(R.compose(R.equals(0), R.last))(emptyCells)
 }
-function solveBruteForce(table, emptyCells, count = 0) {
-  count++;
 
-  if (allConflicts(emptyCells, table) === 0 &&
-    emptyCellsDoesnotContainsZero(emptyCells)) {
-    return table;
+function backtrack(cell, emptyCells) {
+  const emptyCellIndex = R.findIndex(R.compose(R.equals(cell), R.init))(emptyCells);
+
+  const isZero = R.equals(0);
+  const prevEmptyCell = index => emptyCells[index - 1];
+
+  const hasOneValueLeft = R.unless(R.isNil, R.compose(R.equals(1), R.length, R.last));
+
+  const shiftValues = R.adjust(2, R.tail);
+  const updatePrevEmptyCell = R.compose(shiftValues, prevEmptyCell);
+
+  return R.cond([
+    [isZero, () => { throw new Error('WRONG TABLE') }],
+    [R.compose(hasOneValueLeft, prevEmptyCell), R.always(changeAllPrevOneItemArraysToZero(emptyCells))],
+    [R.T, R.compose(R.of, updatePrevEmptyCell)]
+  ])(emptyCellIndex)
+}
+
+function guess(table, emptyCells) {
+  const zeroValue = R.compose(R.equals(0), R.last);
+  const zeroValueEmptyCellIndex = R.findIndex(zeroValue, emptyCells);
+  const [row, col, val] = emptyCells[zeroValueEmptyCellIndex];
+  const vals = zeroConfVals(row, col, table);
+  const updateEmptyCell = values => [[row, col, values]];
+  const newEmptyCells =
+    R.ifElse(R.isEmpty, R.partial(backtrack, [[row, col], emptyCells]), updateEmptyCell)(vals);
+  const updatedEmptyCells = mergeEmptyCells(newEmptyCells, emptyCells);
+  const updatedTable = updateEmptyCellsValues(updatedEmptyCells, table);
+
+  return [updatedTable, updatedEmptyCells];
+}
+
+function solveBruteForce(table, emptyCells) {
+  const hasNoConflicts = allConflicts(emptyCells, table) === 0;
+  if (hasNoConflicts && emptyCellsHaveValue(emptyCells)) {
+    return [table, emptyCells];
   }
-  let processed = false;
-  // let result;
-  emptyCells.forEach(([row, col, val], i) => {
-    if (processed) return;
-    if (val === 0) {
-      processed = true;
-      const vals = zeroConfVals(row, col, table);
-      // if(row === 7 && col === 2) {
-      //   console.log(table.values)
-      // }
-      if (R.isEmpty(vals)) {
-        if (i === 0) return console.error('WRONG TABLE');
-        if (emptyCells[i - 1][2].length === 1) changeAllPrevOneItemArraysToZero(emptyCells);
-        else {
-          emptyCells[i - 1][2] = R.tail(emptyCells[i - 1][2])
-        }
-      } else {
-        emptyCells[i] = [row, col, vals];
-      }
-      table = updateEmptyCellsValues(emptyCells, table);
-      GLOBAL.table = table;
-      // return solveBruteForce(table, emptyCells, count);
-      // process.nextTick(() => {result = solveBruteForce(table, emptyCells,table, count)})
-      // return result;
-    }
-  });
-  // console.log('wassaup')
-  // console.log(table)
-  // if (allConflicts(emptyCells, table) === 0) {
-  //   console.log('also here')
-  //   return emptyCells;
-  // }
-
-  setTimeout(() => solveBruteForce(table, emptyCells, count),20);
-  // table = updateEmptyCellsValues(emptyCells, table);
-  // return table
+  const [newT, newEmptyCells] = guess(table, emptyCells);
+  return solveBruteForce(newT, newEmptyCells);
 }
