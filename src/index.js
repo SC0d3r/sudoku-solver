@@ -2,7 +2,7 @@ const WIDTH = HEIGHT = 600;
 const GLOBAL = { table: {} }
 var loadedValues;
 function preload() {
-  loadJSON('./table.hard2.json', data => {
+  loadJSON('./table.hard.json', data => {
     loadedValues = data.table;
   });
 }
@@ -17,7 +17,7 @@ function setup_world() {
     )(sudokuTable);
 
     GLOBAL.table = sudokuTable;
-    solveBruteForce(sudokuTable, emptCells);
+    GLOBAL.emptyCells = emptCells;
   } else
     console.error('initialize table')
 
@@ -30,7 +30,14 @@ function setup() {
 
 function draw() {
   background(255);
-  drawTable(GLOBAL.table);
+  let { table, emptyCells } = GLOBAL;
+  const hasNoConflicts = allConflicts(emptyCells, table) === 0;
+  if (hasNoConflicts && emptyCellsHaveValue(emptyCells)) {
+  } else
+    [table, emptyCells] = guess(GLOBAL.table, GLOBAL.emptyCells)
+  GLOBAL.table = table;
+  GLOBAL.emptyCells = emptyCells;
+  drawTable(table);
 }
 
 
@@ -45,20 +52,6 @@ function mouseClicked() {
   // sudokuTable.setCell(finalNum, clickedCellRow, clickedCellColumn);
 
 }
-
-function beginSolve() {
-  // const solver = new SudokuSolver(sudokuTable);
-  // (function solve() {
-  //   setTimeout(() => {
-  //     solver.sweep();
-  //     if (solver.isDone()) {
-  //       alert('Hurray done!');
-  //       return;
-  //     } else solve();
-  //   }, 1000);
-  // }());
-}
-
 
 function keyPressed() {
   // console.log(keyCode);
