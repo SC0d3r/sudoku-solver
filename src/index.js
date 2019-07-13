@@ -2,7 +2,7 @@ const WIDTH = HEIGHT = 500;
 const GLOBAL = { table: {}, solve: false, emptyCells: [] }
 const solveBtn = document.querySelector('#solve-btn');
 const resetBtn = document.querySelector('#reset-btn');
-solveBtn.addEventListener('click', onClick.bind(null, solveBtn, resetBtn));
+solveBtn.addEventListener('click', onClick.bind(null, solveBtn));
 resetBtn.addEventListener('click', onReset.bind(null, resetBtn));
 
 var loadedValues;
@@ -62,20 +62,19 @@ function calculateCellRowCol(mouseX, mouseY) {
 
 function onReset() {
   GLOBAL.table = createSudokuTable(9, 600);
+  GLOBAL.solve = false;
 }
 
-function onClick(btn, resetBtn) {
+function onClick(btn) {
   GLOBAL.emptyCells = emptyCells(GLOBAL.table);
   
   btn.textContent = 'Solving ...';
   btn.disabled = true;
-  resetBtn.disabled = true;
   GLOBAL.solve = true;
 }
 
-function onFinished(btn, resetBtn) {
+function onFinished(btn) {
   btn.textContent = 'Solve';
   GLOBAL.solve = false;
   btn.disabled = false;
-  resetBtn.disabled = false;
 }
