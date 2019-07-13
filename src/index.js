@@ -39,18 +39,18 @@ function draw() {
   drawTable(table);
 }
 
-function isWithin(lower , upper){
-  return R.both(R.gte(R.__ , lower) , R.lte(R.__ , upper));
+function isWithin(lower, upper) {
+  return R.both(R.gte(R.__, lower), R.lte(R.__, upper));
 }
 
 function mouseClicked() {
   const [clickedRow, clickedCol] = calculateCellRowCol(mouseX, mouseY);
-  const within0to8 = isWithin(0,8);
-  if(!within0to8(clickedRow) || !within0to8(clickedCol)) return;
+  const within0to8 = isWithin(0, 8);
+  if (!within0to8(clickedRow) || !within0to8(clickedCol)) return;
 
   const number = +prompt('Enter Number : ');
   if (Number.isNaN(number)) return alert('Enter a number!');
-  GLOBAL.table = setCell(number, clickedRow, clickedCol, GLOBAL.table);
+  GLOBAL.table = setCell(R.clamp(1, 9, number), clickedRow, clickedCol, GLOBAL.table);
 }
 
 function calculateCellRowCol(mouseX, mouseY) {
@@ -67,7 +67,7 @@ function onReset() {
 
 function onClick(btn) {
   GLOBAL.emptyCells = emptyCells(GLOBAL.table);
-  
+
   btn.textContent = 'Solving ...';
   btn.disabled = true;
   GLOBAL.solve = true;
